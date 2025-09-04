@@ -1,6 +1,7 @@
 import React from 'react';
-import { BarChart3, DollarSign, Folder, Settings, Crown } from 'lucide-react';
+import { BarChart3, DollarSign, Folder, Settings, Crown, TrendingUp } from 'lucide-react';
 import { useSubscription } from '../../hooks/useSubscription';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface NavItem {
   id: string;
@@ -21,6 +22,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   className = ''
 }) => {
   const { canAccessFeature, tier } = useSubscription();
+  const { logout, user } = useAuth();
 
   const navItems: NavItem[] = [
     {
@@ -38,6 +40,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
       label: 'Analytics',
       icon: <DollarSign className="w-5 h-5" />,
       feature: 'historical-data'
+    },
+    {
+      id: 'attribution',
+      label: 'Attribution',
+      icon: <TrendingUp className="w-5 h-5" />,
+      feature: 'creator-attribution'
     },
     {
       id: 'settings',
@@ -74,8 +82,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         );
       })}
       
-      {/* Subscription Tier Badge */}
-      <div className="pt-md border-t border-surface/30">
+      {/* User Info & Subscription */}
+      <div className="pt-md border-t border-surface/30 space-y-md">
+        <div className="px-md py-sm">
+          <div className="text-xs text-text-secondary mb-1">Logged in as</div>
+          <div className="text-sm font-medium text-text-primary truncate">
+            {user?.email}
+          </div>
+        </div>
+        
         <div className="px-md py-sm">
           <div className="text-xs text-text-secondary mb-1">Subscription</div>
           <div className={`text-sm font-medium capitalize ${
@@ -85,6 +100,15 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           }`}>
             {tier}
           </div>
+        </div>
+
+        <div className="px-md">
+          <button
+            onClick={logout}
+            className="w-full text-left text-xs text-text-secondary hover:text-text-primary transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     </nav>
