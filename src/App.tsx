@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Dashboard } from './components/views/Dashboard';
 import { Analytics } from './components/views/Analytics';
 import { Projects } from './components/views/Projects';
 import { Settings } from './components/views/Settings';
+import { Attribution } from './components/views/Attribution';
+import { AuthPage } from './components/auth/AuthPage';
 import { SubscriptionProvider } from './hooks/useSubscription';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-function App() {
+const AppContent = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -18,12 +22,29 @@ function App() {
         return <Analytics />;
       case 'projects':
         return <Projects />;
+      case 'attribution':
+        return <Attribution />;
       case 'settings':
         return <Settings />;
       default:
         return <Dashboard />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-md"></div>
+          <p className="text-text-secondary">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
 
   return (
     <SubscriptionProvider>
@@ -63,6 +84,14 @@ function App() {
         </DashboardLayout>
       </div>
     </SubscriptionProvider>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

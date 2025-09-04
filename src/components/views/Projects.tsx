@@ -12,6 +12,15 @@ export const Projects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddProject, setShowAddProject] = useState(false);
+  const [addingProject, setAddingProject] = useState(false);
+  const [newProjectData, setNewProjectData] = useState({
+    name: '',
+    token_address: '',
+    token_symbol: '',
+    token_name: '',
+    deployed_url: '',
+    project_id_external: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -38,6 +47,49 @@ export const Projects: React.FC = () => {
   );
 
   const canAddProject = projects.length < maxProjects;
+
+  const handleAddProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newProjectData.name || !newProjectData.token_address) {
+      return;
+    }
+
+    setAddingProject(true);
+    try {
+      const projectToAdd = {
+        ...newProjectData,
+        launch_date: new Date().toISOString(),
+        token_name: newProjectData.token_name || newProjectData.name,
+        token_symbol: newProjectData.token_symbol || newProjectData.name.substring(0, 3).toUpperCase(),
+        deployed_url: newProjectData.deployed_url || '#',
+        project_id_external: newProjectData.project_id_external || newProjectData.token_address
+      };
+
+      await api.addProject(projectToAdd);
+      await loadData(); // Refresh the data
+      setShowAddProject(false);
+      setNewProjectData({
+        name: '',
+        token_address: '',
+        token_symbol: '',
+        token_name: '',
+        deployed_url: '',
+        project_id_external: ''
+      });
+    } catch (error) {
+      console.error('Failed to add project:', error);
+    } finally {
+      setAddingProject(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewProjectData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
 
   if (loading) {
     return (
@@ -133,41 +185,90 @@ export const Projects: React.FC = () => {
           <div className="bg-surface border border-surface/50 rounded-card p-lg max-w-md w-full shadow-modal">
             <h3 className="text-lg font-semibold text-text-primary mb-md">Add New Project</h3>
             
-            <div className="space-y-md">
+            <form onSubmit={handleAddProject} className="space-y-md">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Token Address
+                  Project Name *
                 </label>
                 <input
                   type="text"
+                  name="name"
+                  value={newProjectData.name}
+                  onChange={handleInputChange}
+                  placeholder="My Awesome Token"
+                  className="w-full px-md py-sm bg-background border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Token Address *
+                </label>
+                <input
+                  type="text"
+                  name="token_address"
+                  value={newProjectData.token_address}
+                  onChange={handleInputChange}
                   placeholder="Enter Solana token address..."
                   className="w-full px-md py-sm bg-background border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+                  required
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Project Name
+                  Token Symbol
                 </label>
                 <input
                   type="text"
-                  placeholder="My Awesome Token"
+                  name="token_symbol"
+                  value={newProjectData.token_symbol}
+                  onChange={handleInputChange}
+                  placeholder="e.g., TKN"
                   className="w-full px-md py-sm bg-background border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
                 />
               </div>
-            </div>
-            
-            <div className="flex justify-end space-x-md mt-lg">
-              <button
-                onClick={() => setShowAddProject(false)}
-                className="px-md py-sm text-text-secondary hover:text-text-primary transition-colors"
-              >
-                Cancel
-              </button>
-              <button className="px-lg py-sm bg-primary hover:bg-primary/90 text-white rounded-button font-medium transition-colors">
-                Add Project
-              </button>
-            </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Deployed URL
+                </label>
+                <input
+                  type="url"
+                  name="deployed_url"
+                  value={newProjectData.deployed_url}
+                  onChange={handleInputChange}
+                  placeholder="https://your-app.com"
+                  className="w-full px-md py-sm bg-background border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-md mt-lg">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProject(false)}
+                  className="px-md py-sm text-text-secondary hover:text-text-primary transition-colors"
+                  disabled={addingProject}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={addingProject || !newProjectData.name || !newProjectData.token_address}
+                  className="px-lg py-sm bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-white rounded-button font-medium transition-colors flex items-center"
+                >
+                  {addingProject ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    'Add Project'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

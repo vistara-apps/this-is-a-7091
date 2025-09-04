@@ -91,6 +91,59 @@ export const api = {
     return mockProjects;
   },
 
+  async addProject(projectData: Omit<Project, 'project_id'>): Promise<Project> {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const newProject: Project = {
+      ...projectData,
+      project_id: 'project-' + Date.now()
+    };
+    
+    mockProjects.push(newProject);
+    
+    // Create initial metrics for the new project
+    const initialMetrics: TokenMetrics = {
+      project_id: newProject.project_id,
+      timestamp: new Date().toISOString(),
+      market_cap_usd: Math.floor(Math.random() * 200000) + 50000,
+      volume_24h_sol: Math.random() * 100,
+      holders_count: Math.floor(Math.random() * 500) + 100,
+      creator_earnings_sol: Math.random() * 20
+    };
+    
+    mockMetrics.push(initialMetrics);
+    
+    return newProject;
+  },
+
+  async updateProject(projectId: string, updates: Partial<Project>): Promise<Project> {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const projectIndex = mockProjects.findIndex(p => p.project_id === projectId);
+    if (projectIndex === -1) {
+      throw new Error('Project not found');
+    }
+    
+    mockProjects[projectIndex] = { ...mockProjects[projectIndex], ...updates };
+    return mockProjects[projectIndex];
+  },
+
+  async deleteProject(projectId: string): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const projectIndex = mockProjects.findIndex(p => p.project_id === projectId);
+    if (projectIndex === -1) {
+      throw new Error('Project not found');
+    }
+    
+    mockProjects.splice(projectIndex, 1);
+    // Remove associated metrics
+    const metricsIndex = mockMetrics.findIndex(m => m.project_id === projectId);
+    if (metricsIndex !== -1) {
+      mockMetrics.splice(metricsIndex, 1);
+    }
+  },
+
   async getTokenMetrics(projectId?: string): Promise<TokenMetrics[]> {
     await new Promise(resolve => setTimeout(resolve, 300));
     if (projectId) {
@@ -119,7 +172,90 @@ export const api = {
     };
   },
 
+  async getCreatorAttribution(projectId: string): Promise<{
+    volumeToEarningsRatio: number;
+    holdersGrowthImpact: number;
+    marketCapCorrelation: number;
+    insights: string[];
+  }> {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    
+    const metrics = mockMetrics.find(m => m.project_id === projectId);
+    if (!metrics) {
+      throw new Error('Project metrics not found');
+    }
+    
+    // Mock attribution analysis
+    const volumeToEarningsRatio = metrics.volume_24h_sol / metrics.creator_earnings_sol;
+    const holdersGrowthImpact = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
+    const marketCapCorrelation = Math.random() * 0.9 + 0.1; // 0.1 to 1.0
+    
+    const insights = [
+      `Every 1 SOL in trading volume generates approximately ${(1 / volumeToEarningsRatio).toFixed(3)} SOL in creator earnings`,
+      `Holder growth has a ${(holdersGrowthImpact * 100).toFixed(1)}% correlation with earnings increase`,
+      `Market cap changes show ${(marketCapCorrelation * 100).toFixed(1)}% correlation with creator revenue`,
+      holdersGrowthImpact > 0.6 ? 'Strong community engagement drives earnings' : 'Focus on community building for better returns'
+    ];
+    
+    return {
+      volumeToEarningsRatio,
+      holdersGrowthImpact,
+      marketCapCorrelation,
+      insights
+    };
+  },
+
+  async exportData(format: 'csv' | 'json' = 'csv'): Promise<string> {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (format === 'json') {
+      return JSON.stringify({
+        projects: mockProjects,
+        metrics: mockMetrics,
+        exportedAt: new Date().toISOString()
+      }, null, 2);
+    }
+    
+    // CSV format
+    const headers = ['Project Name', 'Token Symbol', 'Launch Date', 'Market Cap (USD)', '24h Volume (SOL)', 'Holders', 'Creator Earnings (SOL)'];
+    const rows = mockProjects.map(project => {
+      const metrics = mockMetrics.find(m => m.project_id === project.project_id);
+      return [
+        project.name,
+        project.token_symbol,
+        project.launch_date,
+        metrics?.market_cap_usd || 0,
+        metrics?.volume_24h_sol || 0,
+        metrics?.holders_count || 0,
+        metrics?.creator_earnings_sol || 0
+      ];
+    });
+    
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  },
+
   getSolscanUrl(tokenAddress: string): string {
     return `https://solscan.io/token/${tokenAddress}`;
+  },
+
+  // Supabase integration helpers (for future implementation)
+  supabase: {
+    async fetchProjects(): Promise<Project[]> {
+      // TODO: Implement Supabase query
+      // const { data, error } = await supabase.from('projects').select('*');
+      // if (error) throw error;
+      // return data;
+      return api.getProjects();
+    },
+
+    async fetchTokenMetrics(projectId?: string): Promise<TokenMetrics[]> {
+      // TODO: Implement Supabase query
+      // let query = supabase.from('token_metrics').select('*');
+      // if (projectId) query = query.eq('project_id', projectId);
+      // const { data, error } = await query;
+      // if (error) throw error;
+      // return data;
+      return api.getTokenMetrics(projectId);
+    }
   }
 };

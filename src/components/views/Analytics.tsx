@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { Calendar, TrendingUp, Lock } from 'lucide-react';
+import { TrendingUp, Lock, Download } from 'lucide-react';
 import { Project, TokenMetrics } from '../../types';
 import { api } from '../../services/api';
 import { useSubscription } from '../../hooks/useSubscription';
 import { format } from 'date-fns';
 
 export const Analytics: React.FC = () => {
-  const { canAccessFeature, tier } = useSubscription();
+  const { canAccessFeature } = useSubscription();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [historicalData, setHistoricalData] = useState<TokenMetrics[]>([]);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState(30);
+  const [exporting, setExporting] = useState(false);
 
   const hasAccess = canAccessFeature('historical-data');
 
@@ -81,6 +82,26 @@ export const Analytics: React.FC = () => {
 
   const selectedProjectData = projects.find(p => p.project_id === selectedProject);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const csvData = await api.exportData('csv');
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `token-tracker-data-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-lg animate-fade-in">
       {/* Header */}
@@ -90,30 +111,42 @@ export const Analytics: React.FC = () => {
           <p className="text-text-secondary mt-1">Historical performance and trends</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-md">
-          {/* Project Selector */}
-          <select
-            value={selectedProject}
-            onChange={(e) => setSelectedProject(e.target.value)}
-            className="px-md py-sm bg-surface border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+        <div className="flex flex-col sm:flex-row gap-md justify-between">
+          <div className="flex flex-col sm:flex-row gap-md">
+            {/* Project Selector */}
+            <select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="px-md py-sm bg-surface border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+            >
+              {projects.map(project => (
+                <option key={project.project_id} value={project.project_id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            
+            {/* Date Range Selector */}
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(Number(e.target.value))}
+              className="px-md py-sm bg-surface border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
+            >
+              <option value={7}>Last 7 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+            </select>
+          </div>
+
+          {/* Export Button */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center px-md py-sm bg-accent/20 hover:bg-accent/30 border border-accent/30 rounded-button text-accent transition-colors disabled:opacity-50"
           >
-            {projects.map(project => (
-              <option key={project.project_id} value={project.project_id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-          
-          {/* Date Range Selector */}
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(Number(e.target.value))}
-            className="px-md py-sm bg-surface border border-surface/50 rounded-input text-text-primary focus:outline-none focus:border-primary"
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
+            <Download className="w-4 h-4 mr-2" />
+            {exporting ? 'Exporting...' : 'Export Data'}
+          </button>
         </div>
       </div>
 
@@ -170,7 +203,7 @@ export const Analytics: React.FC = () => {
                     borderRadius: '8px',
                     color: 'hsl(0, 0%, 95%)'
                   }}
-                  formatter={(value: number, name: string) => [
+                  formatter={(value: number) => [
                     `${value.toFixed(2)} SOL`,
                     'Creator Earnings'
                   ]}
